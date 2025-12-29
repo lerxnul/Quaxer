@@ -178,12 +178,12 @@ local fonts = {}; do
     
     local Medium = Register_Font("Medium", 200, "Normal", {
         Id = "Medium.ttf",
-        Font = game:HttpGet("https://github.com/lerxnul/Quaxer/raw/refs/heads/main/Inter_28pt-Medium.ttf"),
+        Font = game:HttpGet("https://github.com/lerxnul/ApexHub/raw/refs/heads/main/Inter_28pt-Medium.ttf"),
     })
 
     local SemiBold = Register_Font("SemiBold", 200, "Normal", {
         Id = "SemiBold.ttf",
-        Font = game:HttpGet("https://github.com/lerxnul/Quaxer/raw/refs/heads/main/Inter_28pt-SemiBold.ttf"),
+        Font = game:HttpGet("https://github.com/lerxnul/ApexHub/raw/refs/heads/main/Inter_28pt-SemiBold.ttf"),
     })
 
     fonts = {
@@ -391,10 +391,27 @@ end
     function library:get_config()
         local Config = {}
         
-        -- Kaydet tüm flag'leri (açık/kapalı fark etmeksizin)
+        -- Önce flags tablosundaki tüm değerleri kaydet
         for k, v in next, flags do
-            Config[k] = sanitize_value(v)
-        end 
+            if v ~= nil then  -- nil değerleri atla
+                Config[k] = sanitize_value(v)
+            end
+        end
+        
+        -- Config_flags içindeki tüm flag'leri kontrol et ve eksik olanları ekle
+        -- Bu, tüm özelliklerin kaydedilmesini garanti eder
+        for flag, setFunc in next, config_flags do
+            -- Eğer Config'de yoksa ve flags'ta varsa, ekle
+            if Config[flag] == nil and flags[flag] ~= nil then
+                Config[flag] = sanitize_value(flags[flag])
+            -- Eğer hiçbirisinde yoksa, default değeri olarak nil veya boş string ekle
+            elseif Config[flag] == nil and flags[flag] == nil then
+                -- Bazı özellikler için default değerler
+                if type(setFunc) == "function" then
+                    -- Fonksiyon varsa, flag'i boş bırak (yükleme sırasında default kullanılacak)
+                end
+            end
+        end
         
         -- Window pozisyonu ve boyutunu kaydet (tüm window'lar için)
         pcall(function()
@@ -1042,7 +1059,7 @@ end
                     FillDirection = Enum.FillDirection.Horizontal
                 });
 
-                multi_list_layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                library:connection(multi_list_layout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                     pcall(function()
                         items[ "multi_section_button_holder" ].CanvasSize = dim_offset(multi_list_layout.AbsoluteContentSize.X, 0)
                     end)
@@ -1076,7 +1093,7 @@ end
                         end
                     end)
 
-                    uis.InputChanged:Connect(function(input)
+                    library:connection(uis.InputChanged, function(input)
                         if not dragging then return end
                         if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
 
@@ -1086,7 +1103,7 @@ end
                         sf.CanvasPosition = Vector2.new(new_x, 0)
                     end)
 
-                    uis.InputEnded:Connect(function(input)
+                    library:connection(uis.InputEnded, function(input)
                         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                             dragging = false
                         end
@@ -1861,6 +1878,8 @@ end
         end;
         
         function cfg.set(bool)
+            cfg.enabled = bool  -- cfg.enabled'ı da güncelle
+            
             if cfg.type == "checkbox" then 
                 library:tween(items[ "tick" ], {Rotation = bool and 0 or 45, ImageTransparency = bool and 0 or 1})
                 library:tween(items[ "toggle_button" ], {BackgroundColor3 = bool and themes.preset.accent or rgb(67, 67, 68)})
@@ -1877,7 +1896,7 @@ end
                 elements.Visible = bool
             end
 
-            flags[cfg.flag] = bool
+            flags[cfg.flag] = bool  -- flags tablosuna da yaz
         end 
         
         items[ "toggle" ].MouseButton1Click:Connect(function()
@@ -2460,7 +2479,7 @@ end
             -- UIListLayout'in AbsoluteContentSize değiştiğinde y_size'ı güncelle
             local listLayout = items[ "scrolling_frame" ]:FindFirstChildOfClass("UIListLayout")
             if listLayout then
-                listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                library:connection(listLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
                     cfg.y_size = listLayout.AbsoluteContentSize.Y + 9 -- padding ekle
                     if items[ "scrolling_frame" ].Parent then
                         items[ "scrolling_frame" ].CanvasSize = dim2(0, 0, 0, cfg.y_size)
@@ -3037,7 +3056,7 @@ end
             cfg.set_visible(cfg.open)            
         end)
 
-        uis.InputChanged:Connect(function(input)
+        library:connection(uis.InputChanged, function(input)
             if (dragging_sat or dragging_hue or dragging_alpha) and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 cfg.update_color() 
             end
@@ -3195,7 +3214,7 @@ end
             cfg.callback(text)
         end 
         
-        items[ "input" ]:GetPropertyChangedSignal("Text"):Connect(function()
+        library:connection(items[ "input" ]:GetPropertyChangedSignal("Text"), function()
             cfg.set(items[ "input" ].Text) 
         end)
 
