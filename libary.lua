@@ -4123,6 +4123,27 @@ end
     end 
     
     function notifications:create_notification(options)
+        local notificationParent = library and library["notifications"]
+        
+        if not notificationParent then
+            task.spawn(function()
+                local maxWait = 50
+                local waited = 0
+                while waited < maxWait do
+                    local lib = getgenv().library
+                    if lib and lib["notifications"] then
+                        local success, err = pcall(function()
+                            notifications:create_notification(options)
+                        end)
+                        if success then break end
+                    end
+                    task.wait(0.1)
+                    waited = waited + 1
+                end
+            end)
+            return
+        end
+        
         local cfg = {
             name = options.name or "This is a title!";
             info = options.info or "This is extra info!";
@@ -4133,7 +4154,7 @@ end
 
         local items = cfg.items; do 
             items[ "notification" ] = library:create( "Frame" , {
-                Parent = library[ "notifications" ] or library[ "items" ];
+                Parent = notificationParent;
                 Size = dim2(0, 210, 0, 53);
                 Name = "\0";
                 BorderColor3 = rgb(0, 0, 0);
