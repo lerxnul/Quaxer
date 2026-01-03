@@ -1,16 +1,40 @@
-local uis = game:GetService("UserInputService") 
-local players = game:GetService("Players") 
-local ws = game:GetService("Workspace")
-local rs = game:GetService("ReplicatedStorage")
-local http_service = game:GetService("HttpService")
-local gui_service = game:GetService("GuiService")
-local lighting = game:GetService("Lighting")
-local run = game:GetService("RunService")
-local stats = game:GetService("Stats")
-local coregui = game:GetService("CoreGui")
-local debris = game:GetService("Debris")
-local tween_service = game:GetService("TweenService")
-local sound_service = game:GetService("SoundService")
+
+local function getService(serviceName)
+    if getgenv and getgenv().ProtectedGetService then
+        return getgenv().ProtectedGetService(serviceName)
+    end
+    return game:GetService(serviceName)
+end
+
+local function newInstance(className)
+    if getgenv and getgenv().ProtectedNewInstance then
+        return getgenv().ProtectedNewInstance(className)
+    end
+    return Instance.new(className)
+end
+
+local function getCoreGui()
+    if gethui then
+        return gethui()
+    elseif getgenv and getgenv().ProtectedGetCoreGui then
+        return getgenv().ProtectedGetCoreGui()
+    end
+    return game:GetService("CoreGui")
+end
+
+local uis = getService("UserInputService") 
+local players = getService("Players") 
+local ws = getService("Workspace")
+local rs = getService("ReplicatedStorage")
+local http_service = getService("HttpService")
+local gui_service = getService("GuiService")
+local lighting = getService("Lighting")
+local run = getService("RunService")
+local stats = getService("Stats")
+local coregui = getCoreGui()
+local debris = getService("Debris")
+local tween_service = getService("TweenService")
+local sound_service = getService("SoundService")
 
 local vec2 = Vector2.new
 local vec3 = Vector3.new
@@ -142,7 +166,11 @@ local keys = {
 library.__index = library
 
 for _, path in next, library.folders do 
-    makefolder(library.directory .. path)
+    if makefolder then
+        makefolder(library.directory .. path)
+    elseif writefile then
+        writefile(library.directory .. path .. "/.keep", "")
+    end
 end
 
 local flags = library.flags 
@@ -192,14 +220,20 @@ local fonts = {}; do
     }
 end
     function library:tween(obj, properties, easing_style, time) 
-        local tween = tween_service:Create(obj, TweenInfo.new(time or 0.25, easing_style or Enum.EasingStyle.Quint, Enum.EasingDirection.InOut, 0, false, 0), properties):Play()
-            
+        local createTween = newcclosure and newcclosure(function()
+            return tween_service:Create(obj, TweenInfo.new(time or 0.25, easing_style or Enum.EasingStyle.Quint, Enum.EasingDirection.InOut, 0, false, 0), properties)
+        end) or function()
+            return tween_service:Create(obj, TweenInfo.new(time or 0.25, easing_style or Enum.EasingStyle.Quint, Enum.EasingDirection.InOut, 0, false, 0), properties)
+        end
+        
+        local tween = createTween()
+        tween:Play()
         return tween
     end
 
     function library:resizify(frame) 
         local handle_size = (uis.TouchEnabled and not uis.MouseEnabled) and 50 or 12
-        local Frame = Instance.new("TextButton")
+        local Frame = newInstance("TextButton")
         Frame.Position = dim2(1, -handle_size, 1, -handle_size)
         Frame.BorderColor3 = rgb(0, 0, 0)
         Frame.Size = dim2(0, handle_size, 0, handle_size)
@@ -391,29 +425,22 @@ end
     function library:get_config()
         local Config = {}
         
-        -- Önce flags tablosundaki tüm değerleri kaydet
         for k, v in next, flags do
-            if v ~= nil then  -- nil değerleri atla
+            if v ~= nil then
                 Config[k] = sanitize_value(v)
             end
         end
         
-        -- Config_flags içindeki tüm flag'leri kontrol et ve eksik olanları ekle
-        -- Bu, tüm özelliklerin kaydedilmesini garanti eder
         for flag, setFunc in next, config_flags do
-            -- Eğer Config'de yoksa ve flags'ta varsa, ekle
             if Config[flag] == nil and flags[flag] ~= nil then
                 Config[flag] = sanitize_value(flags[flag])
-            -- Eğer hiçbirisinde yoksa, default değeri olarak nil veya boş string ekle
             elseif Config[flag] == nil and flags[flag] == nil then
-                -- Bazı özellikler için default değerler
                 if type(setFunc) == "function" then
-                    -- Fonksiyon varsa, flag'i boş bırak (yükleme sırasında default kullanılacak)
+
                 end
             end
         end
         
-        -- Window pozisyonu ve boyutunu kaydet (tüm window'lar için)
         pcall(function()
             if library["items"] then
                 for _, child in pairs(library["items"]:GetChildren()) do
@@ -428,7 +455,7 @@ end
                             X = {Scale = size.X.Scale, Offset = size.X.Offset},
                             Y = {Scale = size.Y.Scale, Offset = size.Y.Offset}
                         })
-                        break -- İlk window'u bulduk
+                        break
                     end
                 end
             end
@@ -467,7 +494,6 @@ end
         local ok, config = pcall(function() return http_service:JSONDecode(config_json) end)
         if not ok or type(config) ~= "table" then return end
         
-        -- Önce window pozisyonu ve boyutunu yükle (tüm window'lar için)
         if config["__window_position"] and config["__window_size"] then
             pcall(function()
                 if library["items"] then
@@ -479,16 +505,14 @@ end
                                 child.Position = dim2(posData.X.Scale or 0, posData.X.Offset or 0, posData.Y.Scale or 0, posData.Y.Offset or 0)
                                 child.Size = dim2(sizeData.X.Scale or 0, sizeData.X.Offset or 0, sizeData.Y.Scale or 0, sizeData.Y.Offset or 0)
                             end
-                            break -- İlk window'u bulduk
+                            break
                         end
                     end
                 end
             end)
         end
         
-        -- Tüm flag'leri yükle (açık/kapalı fark etmeksizin)
         for key, v in next, config do 
-            -- Window pozisyonu ve boyutunu atla (zaten yüklendi)
             if key == "__window_position" or key == "__window_size" or key == "config_name_list" then 
                 continue 
             end
@@ -518,7 +542,6 @@ end
                     function_set(valueToSet)
                 end
             else
-                -- Eğer config_flags'de yoksa, direkt flags tablosuna yaz (tüm özellikler kaydedilsin)
                 flags[key] = desanitize_value(v)
             end
         end 
@@ -557,7 +580,8 @@ end
     end 
 
     function library:connection(signal, callback)
-        local connection = signal:Connect(callback)
+        local protectedCallback = newcclosure and newcclosure(callback) or callback
+        local connection = signal:Connect(protectedCallback)
         
         insert(library.connections, connection)
 
@@ -578,7 +602,7 @@ end
     end 
 
     function library:create(instance, options)
-        local ins = Instance.new(instance) 
+        local ins = newInstance(instance) 
         
         for prop, value in options do 
             ins[prop] = value
@@ -616,8 +640,10 @@ end
             tween;
         }
         
+        local protectedCoreGui = getCoreGui()
+        
         library[ "items" ] = library:create( "ScreenGui" , {
-            Parent = coregui;
+            Parent = protectedCoreGui;
             Name = "\0";
             Enabled = true;
             ZIndexBehavior = Enum.ZIndexBehavior.Global;
@@ -625,7 +651,7 @@ end
         });
         
         library[ "other" ] = library:create( "ScreenGui" , {
-            Parent = coregui;
+            Parent = protectedCoreGui;
             Name = "\0";
             Enabled = false;
             ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
@@ -841,8 +867,10 @@ end
         end 
 
         if uis.TouchEnabled and not uis.MouseEnabled then
+            local protectedCoreGui = getCoreGui()
+            
             library[ "mobile_toggle_gui" ] = library:create( "ScreenGui" , {
-                Parent = coregui;
+                Parent = protectedCoreGui;
                 Name = "\0_mobile_toggle";
                 Enabled = true;
                 ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
@@ -1878,7 +1906,7 @@ end
         end;
         
         function cfg.set(bool)
-            cfg.enabled = bool  -- cfg.enabled'ı da güncelle
+            cfg.enabled = bool
             
             if cfg.type == "checkbox" then 
                 library:tween(items[ "tick" ], {Rotation = bool and 0 or 45, ImageTransparency = bool and 0 or 1})
@@ -1896,7 +1924,7 @@ end
                 elements.Visible = bool
             end
 
-            flags[cfg.flag] = bool  -- flags tablosuna da yaz
+            flags[cfg.flag] = bool
         end 
         
         items[ "toggle" ].MouseButton1Click:Connect(function()
@@ -2397,23 +2425,20 @@ end
         
         function cfg.set_visible(bool)
             if bool then
-                -- UIListLayout'dan gerçek yüksekliği al
                 local listLayout = items[ "scrolling_frame" ]:FindFirstChildOfClass("UIListLayout")
                 if listLayout then
-                    task.wait() -- UIListLayout'un hesaplanması için bekle
-                    cfg.y_size = listLayout.AbsoluteContentSize.Y + 9 -- padding ekle
+                    task.wait()
+                    cfg.y_size = listLayout.AbsoluteContentSize.Y + 9
                     items[ "scrolling_frame" ].CanvasSize = dim2(0, 0, 0, cfg.y_size)
                 end
             end
             
-            -- Maksimum 5 option göster, her option yaklaşık 21 pixel (text 16 + padding 5)
-            local max_visible_height = 5 * 21 + 9 -- 5 option + padding (top 3 + bottom 6)
+            local max_visible_height = 5 * 21 + 9
             local actual_height = bool and math.min(cfg.y_size, max_visible_height) or 0
             library:tween(items[ "dropdown_holder" ], {Size = dim_offset(items[ "dropdown" ].AbsoluteSize.X, actual_height)})
 
             items[ "dropdown_holder" ].Position = dim2(0, items[ "dropdown" ].AbsolutePosition.X, 0, items[ "dropdown" ].AbsolutePosition.Y + 80)
             
-            -- Scroll bar'ı sadece gerektiğinde göster
             if bool then
                 items[ "scrolling_frame" ].ScrollBarImageColor3 = cfg.y_size > max_visible_height and rgb(72, 72, 73) or rgb(33, 33, 35)
             end
@@ -2444,7 +2469,7 @@ end
         end
         
         function cfg.refresh_options(list) 
-            cfg.y_size = 9 -- Padding top + bottom (3 + 6)
+            cfg.y_size = 9
 
             for _, option in cfg.option_instances do 
                 option:Destroy() 
@@ -2476,11 +2501,10 @@ end
                 end)
             end
             
-            -- UIListLayout'in AbsoluteContentSize değiştiğinde y_size'ı güncelle
             local listLayout = items[ "scrolling_frame" ]:FindFirstChildOfClass("UIListLayout")
             if listLayout then
                 library:connection(listLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-                    cfg.y_size = listLayout.AbsoluteContentSize.Y + 9 -- padding ekle
+                    cfg.y_size = listLayout.AbsoluteContentSize.Y + 9
                     if items[ "scrolling_frame" ].Parent then
                         items[ "scrolling_frame" ].CanvasSize = dim2(0, 0, 0, cfg.y_size)
                     end
@@ -2488,7 +2512,6 @@ end
             end
         end
 
-        -- Mouse wheel desteği ekle
         library:connection(uis.InputChanged, function(input)
             if input.UserInputType == Enum.UserInputType.MouseWheel then
                 local sf_local = items[ "scrolling_frame" ]
