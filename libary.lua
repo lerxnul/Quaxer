@@ -1,8 +1,11 @@
 
+local usingFallback = false
+
 local function getService(serviceName)
     if getgenv and getgenv().ProtectedGetService then
         return getgenv().ProtectedGetService(serviceName)
     end
+    usingFallback = true
     return game:GetService(serviceName)
 end
 
@@ -10,15 +13,54 @@ local function newInstance(className)
     if getgenv and getgenv().ProtectedNewInstance then
         return getgenv().ProtectedNewInstance(className)
     end
+    
+    usingFallback = true
+    
+    if getrawmetatable then
+        local mt = getrawmetatable(Instance)
+        if mt then
+            local oldNew = mt.__namecall
+            if oldNew and hookfunction then
+                hookfunction(Instance.new, newcclosure and newcclosure(function(class, ...)
+                    return oldNew(Instance, "new", class, ...)
+                end) or function(class, ...)
+                    return oldNew(Instance, "new", class, ...)
+                end)
+            end
+        end
+    end
+    
     return Instance.new(className)
 end
 
 local function getCoreGui()
+
     if gethui then
         return gethui()
-    elseif getgenv and getgenv().ProtectedGetCoreGui then
+    end
+    
+    if getgenv and getgenv().ProtectedGetCoreGui then
         return getgenv().ProtectedGetCoreGui()
     end
+    
+    usingFallback = true
+    local lp = players.LocalPlayer
+    if lp and lp:FindFirstChild("PlayerGui") then
+        return lp.PlayerGui
+    end
+    
+    local mt = getrawmetatable and getrawmetatable(game:GetService("CoreGui"))
+    if mt then
+        local oldIndex = mt.__index
+        if oldIndex then
+            setreadonly(mt, false)
+            mt.__index = newcclosure and newcclosure(function(self, key)
+                return oldIndex(self, key)
+            end) or oldIndex
+            setreadonly(mt, true)
+        end
+    end
+    
     return game:GetService("CoreGui")
 end
 
@@ -605,7 +647,11 @@ end
         local ins = newInstance(instance) 
         
         for prop, value in options do 
-            ins[prop] = value
+            if prop == "Name" and type(value) == "string" and value == "\0" then
+                ins[prop] = http_service:GenerateGUID(false):gsub("-", ""):sub(1, 15)
+            else
+                ins[prop] = value
+            end
         end
         
         return ins 
@@ -642,9 +688,12 @@ end
         
         local protectedCoreGui = getCoreGui()
         
+        local randomName1 = http_service:GenerateGUID(false):gsub("-", ""):sub(1, 20)
+        local randomName2 = http_service:GenerateGUID(false):gsub("-", ""):sub(1, 20)
+        
         library[ "items" ] = library:create( "ScreenGui" , {
             Parent = protectedCoreGui;
-            Name = "\0";
+            Name = randomName1;
             Enabled = true;
             ZIndexBehavior = Enum.ZIndexBehavior.Global;
             IgnoreGuiInset = true;
@@ -652,11 +701,19 @@ end
         
         library[ "other" ] = library:create( "ScreenGui" , {
             Parent = protectedCoreGui;
-            Name = "\0";
+            Name = randomName2;
             Enabled = false;
             ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
             IgnoreGuiInset = true;
         }); 
+        
+        if usingFallback and notifications then
+            notifications:create_notification({
+                name = "Quaxer",
+                info = "Your executer don't support protected functions Anti-Cheat may detect the UI.",
+                lifetime = 5
+            })
+        end
 
         local items = cfg.items; do
             items[ "main" ] = library:create( "Frame" , {
@@ -869,9 +926,11 @@ end
         if uis.TouchEnabled and not uis.MouseEnabled then
             local protectedCoreGui = getCoreGui()
             
+            local randomName3 = http_service:GenerateGUID(false):gsub("-", ""):sub(1, 20)
+            
             library[ "mobile_toggle_gui" ] = library:create( "ScreenGui" , {
                 Parent = protectedCoreGui;
-                Name = "\0_mobile_toggle";
+                Name = randomName3;
                 Enabled = true;
                 ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
                 IgnoreGuiInset = true;
