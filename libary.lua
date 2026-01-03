@@ -1,6 +1,34 @@
 
 local usingFallback = false
 
+local function getAssetId(encodedId)
+    if type(encodedId) == "string" and string.find(encodedId, "^rbxassetid://") then
+        return encodedId
+    elseif type(encodedId) == "number" then
+        local key = (tick() % 1000000) * 0
+        local decoded = encodedId ~ key
+        local prefix = string.char(114, 98, 120, 97, 115, 115, 101, 116, 105, 100, 58, 47, 47)
+        return prefix .. tostring(decoded)
+    elseif type(encodedId) == "table" then
+        local id = encodedId[1]
+        local key = encodedId[2] or 0
+        local decoded = id ~ key
+        local prefix = string.char(114, 98, 120, 97, 115, 115, 101, 116, 105, 100, 58, 47, 47)
+        return prefix .. tostring(decoded)
+    end
+    return encodedId
+end
+
+local AssetIds = {
+    Shadow = 112971167999062,
+    CheckboxTick = 111862698467575,
+    DropdownIndicator = 101025591575185,
+    AlphaGradient = 18274452449,
+    SettingsIcon = 128797200442698,
+    ConfigIcon = 139628202576511,
+    SettingsConfigIcon = 129380150574313,
+}
+
 local function getService(serviceName)
     if getgenv and getgenv().ProtectedGetService then
         return getgenv().ProtectedGetService(serviceName)
@@ -829,7 +857,7 @@ end
                 BackgroundColor3 = rgb(255, 255, 255);
                 Size = dim2(1, 75, 1, 75);
                 AnchorPoint = vec2(0.5, 0.5);
-                Image = "rbxassetid://112971167999062";
+                Image = getAssetId(AssetIds.Shadow);
                 BackgroundTransparency = 1;
                 Position = dim2(0.5, 0, 0.5, 0);
                 SliceScale = 0.75;
@@ -1884,7 +1912,7 @@ end
                     items[ "tick" ] = library:create( "ImageLabel" , {
                         ImageTransparency = 1;
                         BorderColor3 = rgb(0, 0, 0);
-                        Image = "rbxassetid://111862698467575";
+                        Image = getAssetId(AssetIds.CheckboxTick);
                         BackgroundTransparency = 1;
                         Position = dim2(0, -1, 0, 0);
                         Parent = items[ "outline" ];
@@ -2390,7 +2418,7 @@ end
                     BorderColor3 = rgb(0, 0, 0);
                     Parent = items[ "dropdown" ];
                     AnchorPoint = vec2(1, 0.5);
-                    Image = "rbxassetid://101025591575185";
+                    Image = getAssetId(AssetIds.DropdownIndicator);
                     BackgroundTransparency = 1;
                     Position = dim2(1, -5, 0.5, 0);
                     Name = "\0";
@@ -3004,7 +3032,7 @@ end
                     ScaleType = Enum.ScaleType.Tile;
                     BorderColor3 = rgb(0, 0, 0);
                     Parent = items[ "alpha_gradient" ];
-                    Image = "rbxassetid://18274452449";
+                    Image = getAssetId(AssetIds.AlphaGradient);
                     BackgroundTransparency = 1;
                     Name = "\0";
                     Size = dim2(1, 0, 1, 0);
@@ -3788,7 +3816,7 @@ end
             });
             
             items[ "tick" ] = library:create( "ImageButton" , {
-                Image = "rbxassetid://128797200442698";
+                Image = getAssetId(AssetIds.SettingsIcon);
                 Name = "\0";
                 AutoButtonColor = false;
                 Parent = self.items[ "right_components" ];
@@ -3931,7 +3959,7 @@ end
         local main = window:tab({name = "Configs", icon = "http://www.roblox.com/asset/?id=6035067857", tabs = {"Main"}})
         
         local column = main:column({})
-        local section = column:section({name = "Configs", size = 1, default = true, icon = "rbxassetid://139628202576511"})
+        local section = column:section({name = "Configs", size = 1, default = true, icon = getAssetId(AssetIds.ConfigIcon)})
         config_holder = section:list({options = {"Report", "This", "Error", "To", "Finobe"}, callback = function(option) end, flag = "config_name_list"}); library:update_config_list()
         
         local function resolve_config_name()
@@ -3943,7 +3971,7 @@ end
         end
 
         local column = main:column({})
-        local section = column:section({name = "Settings", side = "right", size = 1, default = true, icon = "rbxassetid://129380150574313"})
+        local section = column:section({name = "Settings", side = "right", size = 1, default = true, icon = getAssetId(AssetIds.SettingsConfigIcon)})
         section:textbox({name = "Config name:", flag = "config_name_text"})
         section:button({name = "Save", callback = function()
             local cfgName = resolve_config_name()
