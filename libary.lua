@@ -4123,27 +4123,6 @@ end
     end 
     
     function notifications:create_notification(options)
-        local notificationParent = library and library["notifications"]
-        
-        if not notificationParent then
-            task.spawn(function()
-                local maxWait = 50
-                local waited = 0
-                while waited < maxWait do
-                    local lib = getgenv().library
-                    if lib and lib["notifications"] then
-                        local success, err = pcall(function()
-                            notifications:create_notification(options)
-                        end)
-                        if success then break end
-                    end
-                    task.wait(0.1)
-                    waited = waited + 1
-                end
-            end)
-            return
-        end
-        
         local cfg = {
             name = options.name or "This is a title!";
             info = options.info or "This is extra info!";
@@ -4154,24 +4133,16 @@ end
 
         local items = cfg.items; do 
             items[ "notification" ] = library:create( "Frame" , {
-                Parent = notificationParent;
+                Parent = library[ "notifications" ] or library[ "items" ];
                 Size = dim2(0, 210, 0, 53);
                 Name = "\0";
                 BorderColor3 = rgb(0, 0, 0);
                 BorderSizePixel = 0;
-                BackgroundTransparency = 0;
-                AnchorPoint = vec2(0, 0);
+                BackgroundTransparency = 1;
+                AnchorPoint = vec2(1, 0);
                 AutomaticSize = Enum.AutomaticSize.Y;
-                BackgroundColor3 = rgb(14, 14, 16);
-                Position = dim2(0, 20, 0, 50);
-                Visible = true;
-                ZIndex = 999;
-                Active = true;
+                BackgroundColor3 = rgb(14, 14, 16)
             });
-            
-            if notificationParent then
-                notificationParent.Enabled = true
-            end
             
             library:create( "UIStroke" , {
                 Color = rgb(23, 23, 29);
@@ -4249,10 +4220,13 @@ end
         local index = #notifications.notifs + 1
         notifications.notifs[index] = items[ "notification" ]
 
+        notifications:fade(items[ "notification" ], false)
+        
         local offset = notifications:refresh_notifs()
 
         items[ "notification" ].Position = dim_offset(20, offset)
-        items[ "notification" ].BackgroundTransparency = 0
+
+        library:tween(items[ "notification" ], {AnchorPoint = vec2(0, 0)}, Enum.EasingStyle.Quad, 1)
         library:tween(items[ "bar" ], {Size = dim2(1, -8, 0, 5)}, Enum.EasingStyle.Quad, cfg.lifetime)
 
         task.spawn(function()
