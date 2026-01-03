@@ -1,5 +1,46 @@
 
 local usingFallback = false
+local protectedFunctionsAvailable = false
+
+-- Test if protected functions are actually working
+local function testProtectedFunctions()
+    -- Test gethui first - most protected
+    if gethui then
+        local testGui = gethui()
+        if testGui and (testGui:IsA("ScreenGui") or testGui:IsA("Folder") or testGui:IsA("Instance")) then
+            protectedFunctionsAvailable = true
+            return true
+        end
+    end
+    
+    -- Test ProtectedGetCoreGui
+    if getgenv and getgenv().ProtectedGetCoreGui then
+        local success, result = pcall(function()
+            return getgenv().ProtectedGetCoreGui()
+        end)
+        if success and result and (result:IsA("ScreenGui") or result:IsA("Folder") or result:IsA("Instance")) then
+            protectedFunctionsAvailable = true
+            return true
+        end
+    end
+    
+    -- Test ProtectedNewInstance
+    if getgenv and getgenv().ProtectedNewInstance then
+        local success, result = pcall(function()
+            return getgenv().ProtectedNewInstance("Frame")
+        end)
+        if success and result and result:IsA("Frame") then
+            protectedFunctionsAvailable = true
+            return true
+        end
+    end
+    
+    protectedFunctionsAvailable = false
+    return false
+end
+
+-- Run test at startup
+testProtectedFunctions()
 
 -- Protected Asset ID Wrapper - Advanced runtime obfuscation to avoid anti-cheat detection
 local function getAssetId(encodedId)
@@ -42,18 +83,28 @@ local AssetIds = {
 
 local function getService(serviceName)
     if getgenv and getgenv().ProtectedGetService then
-        return getgenv().ProtectedGetService(serviceName)
+        local result = getgenv().ProtectedGetService(serviceName)
+        if result then
+            return result
+        end
     end
-    usingFallback = true
+    if not protectedFunctionsAvailable then
+        usingFallback = true
+    end
     return game:GetService(serviceName)
 end
 
 local function newInstance(className)
     if getgenv and getgenv().ProtectedNewInstance then
-        return getgenv().ProtectedNewInstance(className)
+        local result = getgenv().ProtectedNewInstance(className)
+        if result then
+            return result
+        end
     end
     
-    usingFallback = true
+    if not protectedFunctionsAvailable then
+        usingFallback = true
+    end
     
     if getrawmetatable then
         local mt = getrawmetatable(Instance)
@@ -73,16 +124,28 @@ local function newInstance(className)
 end
 
 local function getCoreGui()
-
+    -- Test gethui first - most protected
     if gethui then
-        return gethui()
+        local result = gethui()
+        if result and (result:IsA("ScreenGui") or result:IsA("Folder") or result:IsA("Instance")) then
+            return result
+        end
     end
     
+    -- Test ProtectedGetCoreGui
     if getgenv and getgenv().ProtectedGetCoreGui then
-        return getgenv().ProtectedGetCoreGui()
+        local success, result = pcall(function()
+            return getgenv().ProtectedGetCoreGui()
+        end)
+        if success and result and (result:IsA("ScreenGui") or result:IsA("Folder") or result:IsA("Instance")) then
+            return result
+        end
     end
     
-    usingFallback = true
+    -- Fallback to PlayerGui or CoreGui
+    if not protectedFunctionsAvailable then
+        usingFallback = true
+    end
     local lp = players.LocalPlayer
     if lp and lp:FindFirstChild("PlayerGui") then
         return lp.PlayerGui
@@ -746,9 +809,16 @@ end
             IgnoreGuiInset = true;
         }); 
         
-        if usingFallback and notifications then
+        -- Re-test protected functions before showing notification
+        if not protectedFunctionsAvailable then
+            testProtectedFunctions()
+        end
+        
+        -- Only show notification if protected functions are truly not available
+        if usingFallback and not protectedFunctionsAvailable and notifications then
+            task.wait(0.5)
             notifications:create_notification({
-                name = "Quaxer",
+                name = "Quaxer UI",
                 info = "Your executer don't support protected functions Anti-Cheat may detect the UI.",
                 lifetime = 5
             })
@@ -3984,6 +4054,45 @@ end
         local column = main:column({})
         local section = column:section({name = "Settings", side = "right", size = 1, default = true, icon = getAssetId(AssetIds.SettingsConfigIcon)})
         section:textbox({name = "Config name:", flag = "config_name_text"})
+        section:button({name = "Test Protected UI", callback = function()
+            local testResult = testProtectedFunctions()
+            local statusText = testResult and "✓ Protected functions are WORKING!" or "✗ Protected functions NOT detected"
+            local details = ""
+            
+            if gethui then
+                local testGui = gethui()
+                details = details .. "\ngethui: " .. (testGui and "✓ Working (" .. tostring(testGui) .. ")" or "✗ Failed")
+            else
+                details = details .. "\ngethui: ✗ Not available"
+            end
+            
+            if getgenv and getgenv().ProtectedGetCoreGui then
+                local success, result = pcall(function()
+                    return getgenv().ProtectedGetCoreGui()
+                end)
+                details = details .. "\nProtectedGetCoreGui: " .. (success and "✓ Working" or "✗ Failed")
+            else
+                details = details .. "\nProtectedGetCoreGui: ✗ Not available"
+            end
+            
+            if getgenv and getgenv().ProtectedNewInstance then
+                local success, result = pcall(function()
+                    local test = getgenv().ProtectedNewInstance("Frame")
+                    return test and test:IsA("Frame")
+                end)
+                details = details .. "\nProtectedNewInstance: " .. (success and "✓ Working" or "✗ Failed")
+            else
+                details = details .. "\nProtectedNewInstance: ✗ Not available"
+            end
+            
+            details = details .. "\nFallback Status: " .. (usingFallback and "Using fallback" or "Not using fallback")
+            
+            notifications:create_notification({
+                name = "Protected UI Test",
+                info = statusText .. details,
+                lifetime = 10
+            })
+        end})
         section:button({name = "Save", callback = function()
             local cfgName = resolve_config_name()
             if not cfgName or cfgName == "" then
