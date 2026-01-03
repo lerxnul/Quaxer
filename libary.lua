@@ -4159,11 +4159,19 @@ end
                 Name = "\0";
                 BorderColor3 = rgb(0, 0, 0);
                 BorderSizePixel = 0;
-                BackgroundTransparency = 1;
-                AnchorPoint = vec2(1, 0);
+                BackgroundTransparency = 0;
+                AnchorPoint = vec2(0, 0);
                 AutomaticSize = Enum.AutomaticSize.Y;
-                BackgroundColor3 = rgb(14, 14, 16)
+                BackgroundColor3 = rgb(14, 14, 16);
+                Position = dim2(0, 20, 0, 50);
+                Visible = true;
+                ZIndex = 999;
+                Active = true;
             });
+            
+            if notificationParent then
+                notificationParent.Enabled = true
+            end
             
             library:create( "UIStroke" , {
                 Color = rgb(23, 23, 29);
@@ -4241,13 +4249,10 @@ end
         local index = #notifications.notifs + 1
         notifications.notifs[index] = items[ "notification" ]
 
-        notifications:fade(items[ "notification" ], false)
-        
         local offset = notifications:refresh_notifs()
 
         items[ "notification" ].Position = dim_offset(20, offset)
-
-        library:tween(items[ "notification" ], {AnchorPoint = vec2(0, 0)}, Enum.EasingStyle.Quad, 1)
+        items[ "notification" ].BackgroundTransparency = 0
         library:tween(items[ "bar" ], {Size = dim2(1, -8, 0, 5)}, Enum.EasingStyle.Quad, cfg.lifetime)
 
         task.spawn(function()
