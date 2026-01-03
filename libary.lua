@@ -206,12 +206,12 @@ local fonts = {}; do
     
     local Medium = Register_Font("Medium", 200, "Normal", {
         Id = "Medium.ttf",
-        Font = game:HttpGet("https://github.com/lerxnul/ApexHub/raw/refs/heads/main/Inter_28pt-Medium.ttf"),
+        Font = game:HttpGet("https://github.com/lerxnul/Quaxer/raw/refs/heads/main/Inter_28pt-Medium.ttf"),
     })
 
     local SemiBold = Register_Font("SemiBold", 200, "Normal", {
         Id = "SemiBold.ttf",
-        Font = game:HttpGet("https://github.com/lerxnul/ApexHub/raw/refs/heads/main/Inter_28pt-SemiBold.ttf"),
+        Font = game:HttpGet("https://github.com/lerxnul/Quaxer/raw/refs/heads/main/Inter_28pt-SemiBold.ttf"),
     })
 
     fonts = {
