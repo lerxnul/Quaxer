@@ -2,9 +2,7 @@
 local usingFallback = false
 local protectedFunctionsAvailable = false
 
--- Test if protected functions are actually working
 local function testProtectedFunctions()
-    -- Test gethui first - most protected
     if gethui then
         local testGui = gethui()
         if testGui and (testGui:IsA("ScreenGui") or testGui:IsA("Folder") or testGui:IsA("Instance")) then
@@ -12,8 +10,7 @@ local function testProtectedFunctions()
             return true
         end
     end
-    
-    -- Test ProtectedGetCoreGui
+
     if getgenv and getgenv().ProtectedGetCoreGui then
         local success, result = pcall(function()
             return getgenv().ProtectedGetCoreGui()
@@ -23,8 +20,7 @@ local function testProtectedFunctions()
             return true
         end
     end
-    
-    -- Test ProtectedNewInstance
+
     if getgenv and getgenv().ProtectedNewInstance then
         local success, result = pcall(function()
             return getgenv().ProtectedNewInstance("Frame")
@@ -39,30 +35,24 @@ local function testProtectedFunctions()
     return false
 end
 
--- Run test at startup
 testProtectedFunctions()
 
--- Protected Asset ID Wrapper - Advanced runtime obfuscation to avoid anti-cheat detection
 local function getAssetId(encodedId)
-    -- Obfuscated decode - XOR with dynamic key to avoid pattern detection
     if type(encodedId) == "string" and string.find(encodedId, "^rbxassetid://") then
         return encodedId
     elseif type(encodedId) == "number" then
-        -- Obfuscation layer - runtime calculation to avoid static pattern detection
-        local key = (tick() % 1000000) * 0 -- Always 0, but looks dynamic to scanners
-        local decoded = encodedId + key -- Always produces original, but obfuscates pattern
-        -- Build string in parts to avoid "rbxassetid://" pattern detection
-        local prefix = string.char(114, 98, 120, 97, 115, 115, 101, 116, 105, 100, 58, 47, 47) -- "rbxassetid://" as char codes
+        local key = (tick() % 1000000) * 0
+        local decoded = encodedId + key
+        local prefix = string.char(114, 98, 120, 97, 115, 115, 101, 116, 105, 100, 58, 47, 47)
         return prefix .. tostring(decoded)
     elseif type(encodedId) == "table" then
         local id = encodedId[1]
         local key = encodedId[2] or 0
-        -- Use bit32.bxor for Roblox Lua compatibility (if available)
         local decoded
         if bit32 and bit32.bxor then
             decoded = bit32.bxor(id, key)
         else
-            decoded = id + (key * 0) -- Fallback: no XOR, just add 0
+            decoded = id + (key * 0)
         end
         local prefix = string.char(114, 98, 120, 97, 115, 115, 101, 116, 105, 100, 58, 47, 47)
         return prefix .. tostring(decoded)
@@ -70,7 +60,6 @@ local function getAssetId(encodedId)
     return encodedId
 end
 
--- Asset ID storage - numbers only, no direct string patterns
 local AssetIds = {
     Shadow = 112971167999062,
     CheckboxTick = 111862698467575,
@@ -124,25 +113,24 @@ local function newInstance(className)
 end
 
 local function getCoreGui()
-    -- Test gethui first - most protected
     if gethui then
         local result = gethui()
         if result and (result:IsA("ScreenGui") or result:IsA("Folder") or result:IsA("Instance")) then
+            protectedFunctionsAvailable = true
             return result
         end
     end
     
-    -- Test ProtectedGetCoreGui
     if getgenv and getgenv().ProtectedGetCoreGui then
         local success, result = pcall(function()
             return getgenv().ProtectedGetCoreGui()
         end)
         if success and result and (result:IsA("ScreenGui") or result:IsA("Folder") or result:IsA("Instance")) then
+            protectedFunctionsAvailable = true
             return result
         end
     end
     
-    -- Fallback to PlayerGui or CoreGui
     if not protectedFunctionsAvailable then
         usingFallback = true
     end
@@ -766,6 +754,10 @@ end
 
         if library[ "other" ] then 
             library[ "other" ]:Destroy()
+        end
+        
+        if library[ "notifications" ] then 
+            library[ "notifications" ]:Destroy()
         end 
         
         for index, connection in library.connections do 
@@ -790,6 +782,21 @@ end
         
         local protectedCoreGui = getCoreGui()
         
+        if not protectedFunctionsAvailable then
+            testProtectedFunctions()
+        end
+        
+        if usingFallback and not protectedFunctionsAvailable then
+            task.wait(0.1)
+            if notifications then
+                notifications:create_notification({
+                    name = "Quaxer UI",
+                    info = "Your executer don't support protected functions Anti-Cheat may detect the UI.",
+                    lifetime = 5
+                })
+            end
+        end
+        
         local randomName1 = http_service:GenerateGUID(false):gsub("-", ""):sub(1, 20)
         local randomName2 = http_service:GenerateGUID(false):gsub("-", ""):sub(1, 20)
         
@@ -807,22 +814,16 @@ end
             Enabled = false;
             ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
             IgnoreGuiInset = true;
-        }); 
+        });
         
-        -- Re-test protected functions before showing notification
-        if not protectedFunctionsAvailable then
-            testProtectedFunctions()
-        end
-        
-        -- Only show notification if protected functions are truly not available
-        if usingFallback and not protectedFunctionsAvailable and notifications then
-            task.wait(0.5)
-            notifications:create_notification({
-                name = "Quaxer UI",
-                info = "Your executer don't support protected functions Anti-Cheat may detect the UI.",
-                lifetime = 5
-            })
-        end
+        local randomName3 = http_service:GenerateGUID(false):gsub("-", ""):sub(1, 20)
+        library[ "notifications" ] = library:create( "ScreenGui" , {
+            Parent = protectedCoreGui;
+            Name = randomName3;
+            Enabled = true;
+            ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
+            IgnoreGuiInset = true;
+        });
 
         local items = cfg.items; do
             items[ "main" ] = library:create( "Frame" , {
@@ -4054,45 +4055,6 @@ end
         local column = main:column({})
         local section = column:section({name = "Settings", side = "right", size = 1, default = true, icon = getAssetId(AssetIds.SettingsConfigIcon)})
         section:textbox({name = "Config name:", flag = "config_name_text"})
-        section:button({name = "Test Protected UI", callback = function()
-            local testResult = testProtectedFunctions()
-            local statusText = testResult and "✓ Protected functions are WORKING!" or "✗ Protected functions NOT detected"
-            local details = ""
-            
-            if gethui then
-                local testGui = gethui()
-                details = details .. "\ngethui: " .. (testGui and "✓ Working (" .. tostring(testGui) .. ")" or "✗ Failed")
-            else
-                details = details .. "\ngethui: ✗ Not available"
-            end
-            
-            if getgenv and getgenv().ProtectedGetCoreGui then
-                local success, result = pcall(function()
-                    return getgenv().ProtectedGetCoreGui()
-                end)
-                details = details .. "\nProtectedGetCoreGui: " .. (success and "✓ Working" or "✗ Failed")
-            else
-                details = details .. "\nProtectedGetCoreGui: ✗ Not available"
-            end
-            
-            if getgenv and getgenv().ProtectedNewInstance then
-                local success, result = pcall(function()
-                    local test = getgenv().ProtectedNewInstance("Frame")
-                    return test and test:IsA("Frame")
-                end)
-                details = details .. "\nProtectedNewInstance: " .. (success and "✓ Working" or "✗ Failed")
-            else
-                details = details .. "\nProtectedNewInstance: ✗ Not available"
-            end
-            
-            details = details .. "\nFallback Status: " .. (usingFallback and "Using fallback" or "Not using fallback")
-            
-            notifications:create_notification({
-                name = "Protected UI Test",
-                info = statusText .. details,
-                lifetime = 10
-            })
-        end})
         section:button({name = "Save", callback = function()
             local cfgName = resolve_config_name()
             if not cfgName or cfgName == "" then
@@ -4172,7 +4134,7 @@ end
 
         local items = cfg.items; do 
             items[ "notification" ] = library:create( "Frame" , {
-                Parent = library[ "items" ];
+                Parent = library[ "notifications" ] or library[ "items" ];
                 Size = dim2(0, 210, 0, 53);
                 Name = "\0";
                 BorderColor3 = rgb(0, 0, 0);
