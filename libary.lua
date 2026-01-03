@@ -787,10 +787,9 @@ end
         end
         
         if usingFallback and not protectedFunctionsAvailable then
-            task.wait(0.1)
             if notifications then
                 notifications:create_notification({
-                    name = "Quaxer UI",
+                    name = "Quaxer",
                     info = "Your executer don't support protected functions Anti-Cheat may detect the UI.",
                     lifetime = 5
                 })
